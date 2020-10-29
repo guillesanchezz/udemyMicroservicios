@@ -1,9 +1,18 @@
 package com.formacionbdi.springboot.app.items.controller;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
+import org.springframework.core.env.Environment;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
@@ -13,12 +22,21 @@ import com.formacionbdi.springboot.app.items.models.Producto;
 import com.formacionbdi.springboot.app.items.service.ItemService;
 import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
 
+@RefreshScope
 @RestController
 public class ItemController {
+	
+	private static Logger log = LoggerFactory.getLogger(ItemController.class);
+	
+	@Autowired
+	private Environment env;
 	
 	@Autowired
 	@Qualifier("serviceFeign")
 	private ItemService itemService;
+	
+	@Value("${configuracion.texto}")
+	private String texto;
 	
 	@GetMapping("/listar")
 	public List<Item> listar(){
@@ -43,6 +61,21 @@ public class ItemController {
 		
 		return item;
 		
+	}
+	
+	@GetMapping("/obtener-config")
+	public ResponseEntity<?> obtenerConfiguracion(	@Value("${server.port}") String puerto){
+		Map<String,String> json = new HashMap<>();
+		json.put("texto", texto);
+		json.put("puerto", puerto);
+		
+		//log.info("Perfil : " + env.getActiveProfiles()[0]);
+		//log.info("Elementos : " + env.getActiveProfiles().length);
+		if(env.getActiveProfiles().length>0 && env.getActiveProfiles()[0].equals("dev")) {
+			json.put("autor.nombre", env.getProperty("configuracion.autor.nombre"));
+			json.put("autor.email", env.getProperty("configuracion.autor.email"));
+		}
+		return new ResponseEntity<Map<String,String>>(json,HttpStatus.OK);
 	}
 
 }
